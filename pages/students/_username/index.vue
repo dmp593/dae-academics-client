@@ -31,13 +31,23 @@
       </template>
     </b-table>
     <p v-else>No subjects unrolled.</p>
+
+    <h4>Documents</h4>
+    <b-table v-if="documents.length" striped over :items="documents" :fields="documentsFields">
+      <template v-slot:cell(actions)="row">
+        <b-btn class="btn btn-link" @click.prevent="download(row.item)" tar-get="_blank">Download</b-btn>
+      </template>
+    </b-table>
+    <p v-else>No documents.</p>
+
     <nuxt-link to="/students">Back</nuxt-link>
 
     &nbsp;
     <nuxt-link to="/students">Go back</nuxt-link>
     &nbsp;
-    <nuxt-link :to="`/students/${this.username}/send-email`">Send e-mail</nuxt-link
-    >
+    <nuxt-link :to="`/students/${this.username}/send-email`">Send e-mail</nuxt-link>
+    &nbsp;
+    <nuxt-link :to="`/students/${this.username}/upload`">Upload</nuxt-link>
   </b-container>
 </template>
 <script>
@@ -47,6 +57,7 @@ export default {
       student: {},
       subjectsEnrolled: [],
       subjectsUnrolled: [],
+      documents: [],
       subjectFields: [
         "code",
         "name",
@@ -55,12 +66,13 @@ export default {
         "scholarYear",
         "actions",
       ],
+      documentsFields: [ 'filename', 'actions' ],
     };
   },
   computed: {
     username() {
       return this.$route.params.username;
-    },
+    }
   },
   created() {
     this.$axios
@@ -68,10 +80,10 @@ export default {
       .then((student) => (this.student = student || {}))
       .then(() => this.$axios.$get(`/api/students/${this.username}/subjects`))
       .then((subjectsEnrolled) => (this.subjectsEnrolled = subjectsEnrolled))
-      .then(() =>
-        this.$axios.$get(`/api/students/${this.username}/subjects/unrolled`)
-      )
-      .then((subjectsUnrolled) => (this.subjectsUnrolled = subjectsUnrolled));
+      .then(() => this.$axios.$get(`/api/students/${this.username}/subjects/unrolled`))
+      .then((subjectsUnrolled) => (this.subjectsUnrolled = subjectsUnrolled))
+      .then(() => this.$axios.$get(`/api/documents/${this.username}`))
+      .then((documents) => this.documents = documents)
   },
   methods: {
     enroll(row) {
@@ -94,6 +106,19 @@ export default {
           this.subjectsUnrolled.push(item);
         });
     },
+    download(fileToDownload) {
+      const documentId = fileToDownload.id
+
+      this.$axios.$get('/api/documents/download/' + documentId, { responseType: 'arraybuffer'})
+        .then(file => {
+          const url = window.URL.createObjectURL(new Blob([file]))
+          const link = document.createElement('a')
+          link.href = url
+          link.setAttribute('download', fileToDownload.filename)
+          document.body.appendChild(link)
+          link.click()
+        })
+    }
   },
 };
 </script>
